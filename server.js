@@ -1,31 +1,35 @@
-const express = require('express')
-const app = express()
-const { ROLE, users } = require('./data')
-const { authUser, authRole } = require('./basicAuth')
-const projectRouter = require('./routes/projects')
+const express = require('express');
+const dotenv = require('dotenv');
+const morgan = require('morgan');
+const bodyparser = require("body-parser");
+const path = require('path');
 
-app.use(express.json())
-app.use(setUser)
-app.use('/projects', projectRouter)
+const connectDB = require('./server/database/connection');
 
-app.get('/', (req, res) => {
-  res.send('Home Page')
-})
+const app = express();
 
-app.get('/dashboard', authUser, (req, res) => {
-  res.send('Dashboard Page')
-})
+dotenv.config( { path : 'config.env'} )
+const PORT = process.env.PORT || 8080
 
-app.get('/admin', authUser, authRole(ROLE.ADMIN), (req, res) => {
-  res.send('Admin Page')
-})
+// log requests
+app.use(morgan('tiny'));
 
-function setUser(req, res, next) {
-  const userId = req.body.userId
-  if (userId) {
-    req.user = users.find(user => user.id === userId)
-  }
-  next()
-}
+// mongodb connection
+connectDB();
 
-app.listen(3000)
+// parse request to body-parser
+app.use(bodyparser.urlencoded({ extended : true}))
+
+// set view engine
+app.set("view engine", "ejs")
+//app.set("views", path.resolve(__dirname, "views/ejs"))
+
+// load assets
+app.use('/css', express.static(path.resolve(__dirname, "assets/css")))
+app.use('/img', express.static(path.resolve(__dirname, "assets/img")))
+app.use('/js', express.static(path.resolve(__dirname, "assets/js")))
+
+// load routers
+app.use('/', require('./server/routes/router'))
+
+app.listen(PORT, ()=> { console.log(`Server is running on http://localhost:${PORT}`)});
